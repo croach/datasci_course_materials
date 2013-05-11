@@ -2,6 +2,7 @@ import sys
 import re
 import unicodedata
 import json
+from math import copysign
 from collections import defaultdict
 
 
@@ -29,6 +30,9 @@ def load_sentiments(filename):
     sentiments = defaultdict(lambda: None)
     with open(filename) as fin:
         for line in fin:
+            # Skip commented out lines
+            if line.strip().startswith('#'):
+                continue
             word, sentiment = re.split('\t+', line)
             sentiments[word] = float(sentiment)
     return sentiments
@@ -56,7 +60,34 @@ def split_words(tweet):
             unichr(i) != u"'"])  # ignore apostrophes to allow contractions
         setattr(split_words, "_punctuation", punctuation)
 
-    return tweet.get('text', u'').translate(punctuation).split()
+    return tweet.get('text', u'').lower().translate(punctuation).split()
+
+# def calculate_missing_sentiments(sentiments, tweets):
+#     missing_scores = defaultdict(list)
+
+#     # For each tweet, calculate its sentiment score and then increment the
+#     # positive (or negative) count for the missing words in the tweet based
+#     # on the positive or negative outcome of the tweet itself.
+#     for tweet in tweets:
+#         words = split_words(tweet)
+#         # scores = [(word, sentiments[word]) for word in words]
+#         scores = [sentiments[w] for w in words if sentiments[w] is not None]
+#         missing_words = [w for w in words if sentiments[w] is None]
+#         for word in missing_words:
+#             missing_scores[word].append(scores)
+
+#     for word, scores in missing_scores.items():
+#         sentiment = sum(copysign(1, sum(s)) for s in scores if s)
+#         flattened_scores = [i for obs in scores for i in obs]
+#         if sentiment > 0:
+#             score = round(sum([i for i in flattened_scores if i > 0])/(len(flattened_scores)*5.0)*5.0)
+#         elif sentiment < 0:
+#             score = round(sum([i for i in flattened_scores if i < 0])/(len(flattened_scores)*5.0)*5.0)
+#         else:
+#             score = 0.0
+#         missing_scores[word] = score
+
+#     return missing_scores
 
 def calculate_missing_sentiments(sentiments, tweets):
     """Calculates sentiment scores for words missing from the sentiments dict
