@@ -6,18 +6,6 @@ from math import copysign
 from collections import defaultdict
 
 
-# A list of standard punctuation used as the default list of characters to
-# delete from a text's text before calculating its sentiment score.
-# The punctuation data structure must be a dict where each character
-# is a key with a value of None. This is neccessary since the
-# unicode version of the translate method doesn't actually support the
-# deletechars keyword argument (as the ascii version does). Instead, it
-# will remove characters from unicode string if the value for that
-# character is None.
-# punctuation=dict.fromkeys([i for i in xrange(sys.maxunicode)
-#     if unicodedata.category(unichr(i)).startswith('P') and
-#     unichr(i) != u"'"])  # ignore apostrophes to allow contractions
-
 def load_tweets(filename):
     """Loads the tweets file into a python list"""
     tweets = []
