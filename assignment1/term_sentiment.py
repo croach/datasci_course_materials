@@ -1,81 +1,7 @@
 import sys
-import re
-import unicodedata
-import json
-from math import copysign
-from collections import defaultdict
 
+from utils import *
 
-def load_tweets(filename):
-    """Loads the tweets file into a python list"""
-    tweets = []
-    with open(filename) as fin:
-        tweets = [json.loads(line) for line in fin]
-    return tweets
-
-def load_sentiments(filename):
-    """Loads the sentiments file into a python dict"""
-    sentiments = defaultdict(lambda: None)
-    with open(filename) as fin:
-        for line in fin:
-            # Skip commented out lines
-            if line.strip().startswith('#'):
-                continue
-            word, sentiment = re.split('\t+', line)
-            sentiments[word] = float(sentiment)
-    return sentiments
-
-def split_words(tweet):
-    """Splits the text for the given tweet into a list of words
-
-    This function will first remove all of the punctuation in the text before
-    splitting the text into a list of words.
-
-    """
-    # The punctuation data structure must be a dict where each character
-    # is a key with a value of None. This is neccessary since the
-    # unicode version of the translate method doesn't actually support the
-    # deletechars keyword argument (as the ascii version does). Instead, it
-    # will remove characters from unicode string if the value for that
-    # character is None.
-    #
-    # The punctuation dict is cached on the function object since its creation
-    # can be expensive when done repeatedly for every tweet.
-    punctuation = getattr(split_words, "_punctuation", None)
-    if punctuation is None:
-        punctuation=dict.fromkeys([i for i in xrange(sys.maxunicode)
-            if unicodedata.category(unichr(i)).startswith('P') and
-            unichr(i) != u"'"])  # ignore apostrophes to allow contractions
-        setattr(split_words, "_punctuation", punctuation)
-
-    return tweet.get('text', u'').lower().translate(punctuation).split()
-
-# def calculate_missing_sentiments(sentiments, tweets):
-#     missing_scores = defaultdict(list)
-
-#     # For each tweet, calculate its sentiment score and then increment the
-#     # positive (or negative) count for the missing words in the tweet based
-#     # on the positive or negative outcome of the tweet itself.
-#     for tweet in tweets:
-#         words = split_words(tweet)
-#         # scores = [(word, sentiments[word]) for word in words]
-#         scores = [sentiments[w] for w in words if sentiments[w] is not None]
-#         missing_words = [w for w in words if sentiments[w] is None]
-#         for word in missing_words:
-#             missing_scores[word].append(scores)
-
-#     for word, scores in missing_scores.items():
-#         sentiment = sum(copysign(1, sum(s)) for s in scores if s)
-#         flattened_scores = [i for obs in scores for i in obs]
-#         if sentiment > 0:
-#             score = round(sum([i for i in flattened_scores if i > 0])/(len(flattened_scores)*5.0)*5.0)
-#         elif sentiment < 0:
-#             score = round(sum([i for i in flattened_scores if i < 0])/(len(flattened_scores)*5.0)*5.0)
-#         else:
-#             score = 0.0
-#         missing_scores[word] = score
-
-#     return missing_scores
 
 def calculate_missing_sentiments(sentiments, tweets):
     """Calculates sentiment scores for words missing from the sentiments dict
@@ -103,7 +29,7 @@ def calculate_missing_sentiments(sentiments, tweets):
     # on the positive or negative outcome of the tweet itself.
     for tweet in tweets:
         words = split_words(tweet)
-        scores = [(word, sentiments[word]) for word in words]
+        scores = [(word, sentiments.get(word, None)) for word in words]
         score = sum(score for _, score in scores if score is not None)
         missing_words = [w for w, s in scores if s is None]
         for word in missing_words:
@@ -136,6 +62,7 @@ def calculate_missing_sentiments(sentiments, tweets):
 
     return missing_scores
 
+
 def main(sentiment_filename, tweet_filename):
     sentiments = load_sentiments(sentiment_filename)
     tweets = load_tweets(tweet_filename)
@@ -143,43 +70,11 @@ def main(sentiment_filename, tweet_filename):
     for tweet in tweets:
         words = split_words(tweet)
         for word in words:
-            if sentiments[word] is None:
+            if word not in sentiments:
                 try:
                     print word, missing_sentiments[word]
                 except UnicodeEncodeError:
                     print word.encode('utf-8'), missing_sentiments[word]
-
-# def main(sentiment_filename, tweet_filename):
-#     sentiments = load_sentiments(sentiment_filename)
-#     tweets = load_tweets(tweet_filename)
-#     for tweet in tweets:
-#         # Remove the punctuation and split into words
-#         words = tweet.get('text', u'').translate(punctuation).split()
-#         scores = [(word, sentiments[word]) for word in words]
-#         positive_words = filter(lambda (_, s): s is not None and s > 0, scores)
-#         negative_words = filter(lambda (_, s): s is not None and s < 0, scores)
-#         missing_words = filter(lambda (_, s): s is None, scores)
-#         score = sum(score for _, score in scores if score is not None)
-#         total = lambda words: sum(float(s) for _, s in words)
-#         if score > 0:
-#             missing_score = round(total(positive_words)/len(positive_words))
-#         elif score < 0:
-#             missing_score = round(total(negative_words)/len(negative_words))
-#         else:
-#             missing_score = 0.0
-
-#         for word, _ in missing_words:
-#             try:
-#                 print word, float(missing_score)
-#             except UnicodeEncodeError:
-#                 print word.encode('utf-8'), float(missing_score)
-
-#         filter(lambda _, score: score is None, scores)
-#         positive_words = sum([1 for score in filter(None, scores) if score > 0])
-#         negative_words = sum([1 for score in filter(None, scores) if score < 0])
-#          # = positive_words + negative_words
-
-#         print float(score)
 
 
 if __name__ == '__main__':
